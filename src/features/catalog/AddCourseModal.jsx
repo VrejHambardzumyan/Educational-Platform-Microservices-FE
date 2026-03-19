@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { API, apiFetch, authHeaders } from "../../api/config";
+
+export default function AddCourseModal({ onClose, onAdded, toast }) {
+  const [form, setForm] = useState({ Title: "", Description: "", DurationInMonth: 1, Price: 0 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "number" ? Number(e.target.value) : e.target.value }));
+
+  async function submit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const created = await apiFetch(`${API.catalog}/CourseCatalog/AddCourse`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(form),
+      });
+      toast("Course added successfully!", "success");
+      onAdded(created);
+      onClose();
+    } catch (err) {
+      setError(err.message || "Failed to add course");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-title">Add new course</div>
+        {error && <div className="alert alert-error">{error}</div>}
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="form-group">
+            <label className="form-label">Title</label>
+            <input className="form-input" placeholder="e.g. React Fundamentals" value={form.Title} onChange={set("Title")} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Description</label>
+            <textarea className="form-input" rows={3} placeholder="Brief course description…" value={form.Description} onChange={set("Description")} required style={{ resize: "vertical" }} />
+          </div>
+          <div className="form-grid">
+            <div className="form-group">
+              <label className="form-label">Duration (months)</label>
+              <input className="form-input" type="number" min={1} max={12} value={form.DurationInMonth} onChange={set("DurationInMonth")} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Price ($)</label>
+              <input className="form-input" type="number" min={1} max={100000} value={form.Price} onChange={set("Price")} required />
+            </div>
+          </div>
+          <div className="form-actions">
+            <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? "Adding…" : "Add course"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
