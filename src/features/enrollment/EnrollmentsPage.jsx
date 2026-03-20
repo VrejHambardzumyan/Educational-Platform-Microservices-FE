@@ -83,7 +83,7 @@ export default function EnrollmentsPage({ userId, toast }) {
               <div>
                 <div style={{ fontSize: 12, color: "var(--accent-dark)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Cart</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: "var(--accent-dark)", marginTop: 2 }}>
-                  {drafts.length} course(s) · ${drafts.reduce((s, e) => s + (e.amount || 0), 0).toLocaleString()} ֏
+                  {drafts.length} course(s) · {drafts.reduce((s, e) => s + (e.amount || 0), 0).toLocaleString()} ֏
                 </div>
               </div>
               <button className="btn btn-primary" onClick={initiatePayment}>Checkout</button>
@@ -103,7 +103,7 @@ export default function EnrollmentsPage({ userId, toast }) {
         </div>
         <div className="stat-card">
           <div className="stat-label">Total spent</div>
-          <div className="stat-value">${total.toLocaleString()} ֏</div>
+          <div className="stat-value">{total.toLocaleString()} ֏</div>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default function EnrollmentsPage({ userId, toast }) {
                   Course #{e.courseId}
                 </span>
                 <span className="enroll-meta">
-                  Enrolled {new Date(e.createdAt).toLocaleDateString()} · ${e.amount?.toLocaleString()} ֏
+                  Enrolled {new Date(e.createdAt).toLocaleDateString()} · {e.amount?.toLocaleString()} ֏
                   {e.activatedAt && ` · Activated ${new Date(e.activatedAt).toLocaleDateString()}`}
                 </span>
               </div>
