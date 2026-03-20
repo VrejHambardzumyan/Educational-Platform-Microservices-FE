@@ -75,7 +75,7 @@ export default function CoursesPage({ userId, role, toast }) {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
-                <span className="price-tag">${c.price.toLocaleString()}</span>
+                <span className="price-tag">{c.price.toLocaleString()} ֏</span>
                 <button className="btn btn-primary btn-sm" onClick={() => enroll(c.id)} disabled={enrollingId === c.id}>
                   {enrollingId === c.id ? "Enrolling…" : "Enroll"}
                 </button>
