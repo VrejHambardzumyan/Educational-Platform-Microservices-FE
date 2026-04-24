@@ -1,22 +1,26 @@
 import { useState } from "react";
-import { API, apiFetch, authHeaders } from "../../api/config";
+import { API, apiFetch, getUserId } from "../../api/config";
 
 export default function AddCourseModal({ onClose, onAdded, toast }) {
-  const [form, setForm] = useState({ Title: "", Description: "", DurationInMonth: 1, Price: 0 });
+  const [form, setForm] = useState({
+    Title: "", Description: "", DurationInMonth: 1, Price: 0, Category: "",
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === "number" ? Number(e.target.value) : e.target.value }));
+  const set = (k) => (e) =>
+    setForm((f) => ({ ...f, [k]: e.target.type === "number" ? Number(e.target.value) : e.target.value }));
 
   async function submit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const created = await apiFetch(`${API.catalog}/CourseCatalog/AddCourse`, {
+      const instructorId = getUserId();
+      const body = { ...form, ...(instructorId ? { InstructorId: instructorId } : {}) };
+      const created = await apiFetch(`${API}/CourseCatalog/AddCourse`, {
         method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       });
       toast("Course added successfully!", "success");
       onAdded(created);
@@ -42,14 +46,18 @@ export default function AddCourseModal({ onClose, onAdded, toast }) {
             <label className="form-label">Description</label>
             <textarea className="form-input" rows={3} placeholder="Brief course description…" value={form.Description} onChange={set("Description")} required style={{ resize: "vertical" }} />
           </div>
+          <div className="form-group">
+            <label className="form-label">Category</label>
+            <input className="form-input" placeholder="e.g. Programming, Design…" value={form.Category} onChange={set("Category")} />
+          </div>
           <div className="form-grid">
             <div className="form-group">
               <label className="form-label">Duration (months)</label>
               <input className="form-input" type="number" min={1} max={12} value={form.DurationInMonth} onChange={set("DurationInMonth")} required />
             </div>
             <div className="form-group">
-              <label className="form-label">Price ($)</label>
-              <input className="form-input" type="number" min={1} max={100000} value={form.Price} onChange={set("Price")} required />
+              <label className="form-label">Price (֏)</label>
+              <input className="form-input" type="number" min={0} max={100000} value={form.Price} onChange={set("Price")} required />
             </div>
           </div>
           <div className="form-actions">

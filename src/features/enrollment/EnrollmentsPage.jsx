@@ -1,54 +1,32 @@
 import { useState, useEffect, useCallback } from "react";
 import { API, apiFetch } from "../../api/config";
+import CardPaymentModal from "./CardPaymentModal";
 
-export default function EnrollmentsPage({ userId, toast }) {
+export default function EnrollmentsPage({ userId, role, toast }) {
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showPayment, setShowPayment] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiFetch(`${API.enrollment}/CourseEnrollment/GetUser/${userId}`);
+      const endpoint = role === "Admin"
+        ? `${API}/CourseEnrollment/GetUser/${userId}`
+        : `${API}/CourseEnrollment/my-enrollments`;
+      const data = await apiFetch(endpoint);
       setEnrollments(Array.isArray(data) ? data : []);
     } catch {
       setEnrollments([]);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, role]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function initiatePayment() {
-    const draftEnrollments = enrollments.filter(e => e.status === "Draft");
-    if (draftEnrollments.length === 0) {
-      toast("No draft enrollments to pay for.", "error");
-      return;
-    }
-    try {
-      const data = await apiFetch(`${API.enrollment}/CourseEnrollment/InitiatePayment/${userId}`, {
-        method: "POST",
-      });
-      toast(`Payment initiated! ID: ${data.paymentId}`, "success");
-      await load();
-    } catch (err) {
-      toast(err.message || "Payment initiation failed", "error");
-    }
-  }
-
-  async function activate(id) {
-    try {
-      await apiFetch(`${API.enrollment}/CourseEnrollment/Activate/${id}`, { method: "PUT" });
-      toast("Enrollment activated!", "success");
-      setEnrollments((prev) => prev.map((e) => e.id === id ? { ...e, status: "Completed", activatedAt: new Date().toISOString() } : e));
-    } catch (err) {
-      toast(err.message || "Failed to activate", "error");
-    }
-  }
-
   async function cancel(id) {
     try {
-      await apiFetch(`${API.enrollment}/CourseEnrollment/Cancel/${id}`, { method: "PUT" });
+      await apiFetch(`${API}/CourseEnrollment/Cancel/${id}`, { method: "PUT" });
       toast("Enrollment cancelled.", "info");
       setEnrollments((prev) => prev.map((e) => e.id === id ? { ...e, status: "Deleted" } : e));
     } catch (err) {
@@ -61,10 +39,10 @@ export default function EnrollmentsPage({ userId, toast }) {
     return <span className={`badge ${map[s] || "badge-neutral"}`}>{s || "Unknown"}</span>;
   };
 
-  const active = enrollments.filter(e => e.status !== "Deleted");
+  const active = enrollments.filter((e) => e.status !== "Deleted");
   const total = active.reduce((s, e) => s + (e.amount || 0), 0);
-  const completed = enrollments.filter(e => e.status === "Completed").length;
-  const drafts = enrollments.filter(e => e.status === "Draft");
+  const completed = enrollments.filter((e) => e.status === "Completed").length;
+  const drafts = enrollments.filter((e) => e.status === "Draft");
 
   return (
     <>
@@ -78,7 +56,7 @@ export default function EnrollmentsPage({ userId, toast }) {
             <div style={{
               background: "var(--accent-light)", border: "1px solid var(--accent)",
               borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem",
-              display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap"
+              display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap",
             }}>
               <div>
                 <div style={{ fontSize: 12, color: "var(--accent-dark)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Cart</div>
@@ -86,7 +64,7 @@ export default function EnrollmentsPage({ userId, toast }) {
                   {drafts.length} course(s) · {drafts.reduce((s, e) => s + (e.amount || 0), 0).toLocaleString()} ֏
                 </div>
               </div>
-              <button className="btn btn-primary" onClick={initiatePayment}>Checkout</button>
+              <button className="btn btn-primary" onClick={() => setShowPayment(true)}>Checkout</button>
             </div>
           )}
         </div>
@@ -136,15 +114,22 @@ export default function EnrollmentsPage({ userId, toast }) {
               <div className="enroll-actions">
                 {statusBadge(e.status)}
                 {e.status === "Draft" && (
-                  <>
-                    <button className="btn btn-secondary btn-sm" onClick={() => activate(e.id)}>Activate</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => cancel(e.id)}>Cancel</button>
-                  </>
+                  <button className="btn btn-danger btn-sm" onClick={() => cancel(e.id)}>Cancel</button>
                 )}
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {showPayment && (
+        <CardPaymentModal
+          userId={userId}
+          role={role}
+          toast={toast}
+          onClose={() => setShowPayment(false)}
+          onDone={() => { setShowPayment(false); load(); }}
+        />
       )}
     </>
   );
