@@ -95,8 +95,9 @@ async function _parseResponse(res) {
 
 export async function apiFetch(url, opts = {}) {
   const token = getToken();
+  const isFormData = opts.body instanceof FormData;
   const headers = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...opts.headers,
   };

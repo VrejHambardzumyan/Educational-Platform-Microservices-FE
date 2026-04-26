@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { API, apiFetch } from "../../api/config";
 import CardPaymentModal from "./CardPaymentModal";
+import CourseDetail from "../catalog/CourseDetail";
 
 export default function EnrollmentsPage({ userId, role, toast }) {
   const [enrollments, setEnrollments] = useState([]);
+  const [courseMap, setCourseMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
+  const [viewingCourse, setViewingCourse] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -14,7 +17,21 @@ export default function EnrollmentsPage({ userId, role, toast }) {
         ? `${API}/CourseEnrollment/GetUser/${userId}`
         : `${API}/CourseEnrollment/my-enrollments`;
       const data = await apiFetch(endpoint);
-      setEnrollments(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setEnrollments(list);
+
+      if (list.length > 0) {
+        try {
+          const catalogData = await apiFetch(`${API}/CourseCatalog/GetAllCourses?pageSize=100`);
+          const items = Array.isArray(catalogData?.items) ? catalogData.items
+            : Array.isArray(catalogData?.Items) ? catalogData.Items : [];
+          const map = {};
+          items.forEach((c) => { map[c.id ?? c.Id] = c; });
+          setCourseMap(map);
+        } catch {
+          setCourseMap({});
+        }
+      }
     } catch {
       setEnrollments([]);
     } finally {
@@ -23,6 +40,19 @@ export default function EnrollmentsPage({ userId, role, toast }) {
   }, [userId, role]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function openCourse(courseId) {
+    if (courseMap[courseId]) {
+      setViewingCourse(courseMap[courseId]);
+      return;
+    }
+    try {
+      const course = await apiFetch(`${API}/CourseCatalog/GetCourseById/${courseId}`);
+      if (course) setViewingCourse(course);
+    } catch {
+      toast("Could not load course details", "error");
+    }
+  }
 
   async function cancel(id) {
     try {
@@ -41,7 +71,7 @@ export default function EnrollmentsPage({ userId, role, toast }) {
 
   const active = enrollments.filter((e) => e.status !== "Deleted");
   const total = active.reduce((s, e) => s + (e.amount || 0), 0);
-  const completed = enrollments.filter((e) => e.status === "Completed").length;
+  const completedCount = enrollments.filter((e) => e.status === "Completed").length;
   const drafts = enrollments.filter((e) => e.status === "Draft");
 
   return (
@@ -77,7 +107,7 @@ export default function EnrollmentsPage({ userId, role, toast }) {
         </div>
         <div className="stat-card">
           <div className="stat-label">Completed</div>
-          <div className="stat-value accent">{completed}</div>
+          <div className="stat-value accent">{completedCount}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total spent</div>
@@ -95,30 +125,47 @@ export default function EnrollmentsPage({ userId, role, toast }) {
         </div>
       ) : (
         <div className="enroll-list">
-          {enrollments.map((e) => (
-            <div key={e.id} className="enroll-item">
-              <div className="enroll-info">
-                <span className="enroll-label">
-                  {e.status === "Draft" && (
-                    <span style={{ fontSize: 11, background: "var(--warning-bg)", color: "var(--warning)", padding: "2px 8px", borderRadius: 20, fontWeight: 600, marginRight: 8 }}>
-                      IN CART
-                    </span>
+          {enrollments.map((e) => {
+            const course = courseMap[e.courseId];
+            const canView = e.status === "Completed";
+            return (
+              <div key={e.id} className="enroll-item">
+                <div className="enroll-info">
+                  <span className="enroll-label">
+                    {e.status === "Draft" && (
+                      <span style={{ fontSize: 11, background: "var(--warning-bg)", color: "var(--warning)", padding: "2px 8px", borderRadius: 20, fontWeight: 600, marginRight: 8 }}>
+                        IN CART
+                      </span>
+                    )}
+                    {course ? (
+                      <span
+                        style={{ cursor: canView ? "pointer" : "default", color: canView ? "var(--accent)" : "inherit" }}
+                        onClick={() => canView && openCourse(e.courseId)}
+                        title={canView ? "Click to view course" : undefined}
+                      >
+                        {course.title}
+                      </span>
+                    ) : `Course #${e.courseId}`}
+                  </span>
+                  <span className="enroll-meta">
+                    Enrolled {new Date(e.createdAt).toLocaleDateString()} · {e.amount?.toLocaleString()} ֏
+                    {e.activatedAt && ` · Activated ${new Date(e.activatedAt).toLocaleDateString()}`}
+                  </span>
+                </div>
+                <div className="enroll-actions">
+                  {statusBadge(e.status)}
+                  {canView && (
+                    <button className="btn btn-primary btn-sm" onClick={() => openCourse(e.courseId)}>
+                      View course
+                    </button>
                   )}
-                  Course #{e.courseId}
-                </span>
-                <span className="enroll-meta">
-                  Enrolled {new Date(e.createdAt).toLocaleDateString()} · {e.amount?.toLocaleString()} ֏
-                  {e.activatedAt && ` · Activated ${new Date(e.activatedAt).toLocaleDateString()}`}
-                </span>
+                  {e.status === "Draft" && (
+                    <button className="btn btn-danger btn-sm" onClick={() => cancel(e.id)}>Cancel</button>
+                  )}
+                </div>
               </div>
-              <div className="enroll-actions">
-                {statusBadge(e.status)}
-                {e.status === "Draft" && (
-                  <button className="btn btn-danger btn-sm" onClick={() => cancel(e.id)}>Cancel</button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -129,6 +176,15 @@ export default function EnrollmentsPage({ userId, role, toast }) {
           toast={toast}
           onClose={() => setShowPayment(false)}
           onDone={() => { setShowPayment(false); load(); }}
+        />
+      )}
+
+      {viewingCourse && (
+        <CourseDetail
+          course={viewingCourse}
+          role={role}
+          onClose={() => setViewingCourse(null)}
+          toast={toast}
         />
       )}
     </>

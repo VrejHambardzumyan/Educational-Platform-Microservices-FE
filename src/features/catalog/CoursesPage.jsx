@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { API, apiFetch, getUserId } from "../../api/config";
 import AddCourseModal from "./AddCourseModal";
+import EditCourseModal from "./EditCourseModal";
 import CourseDetail from "./CourseDetail";
 
 function Stars({ rating, count }) {
@@ -18,6 +19,7 @@ export default function CoursesPage({ role, toast, setTab }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+  const [editingCourse, setEditingCourse] = useState(null);
   const [enrollingId, setEnrollingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -37,14 +39,22 @@ export default function CoursesPage({ role, toast, setTab }) {
       if (filters.search) params.set("search", filters.search);
       if (filters.category) params.set("category", filters.category);
       const data = await apiFetch(`${API}/CourseCatalog/GetAllCourses?${params}`);
-      setCourses(Array.isArray(data?.items) ? data.items : []);
-      setTotalPages(data?.totalPages || 1);
-    } catch {
+      if (Array.isArray(data)) {
+        setCourses(data);
+        setTotalPages(1);
+      } else {
+        const items = data?.items ?? data?.Items ?? [];
+        setCourses(Array.isArray(items) ? items : []);
+        setTotalPages(data?.totalPages ?? data?.TotalPages ?? data?.totalCount ?? data?.TotalCount ?? 1);
+      }
+    } catch (err) {
+      console.error("Failed to load courses:", err);
+      toast(err.message || "Failed to load courses", "error");
       setCourses([]);
     } finally {
       setLoading(false);
     }
-  }, [page, filters]);
+  }, [page, filters, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -148,7 +158,7 @@ export default function CoursesPage({ role, toast, setTab }) {
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
                   {c.category && <span className="badge badge-info">{c.category}</span>}
-                  {c.status && statusBadge(c.status)}
+                  {c.status && role !== "Student" && statusBadge(c.status)}
                   {c.durationInMonth && (
                     <span className="badge badge-neutral">{c.durationInMonth}mo</span>
                   )}
@@ -173,13 +183,13 @@ export default function CoursesPage({ role, toast, setTab }) {
                     </button>
                   )}
                   {role === "Instructor" && isOwnCourse(c) && (
-                    <button className="btn btn-secondary btn-sm" onClick={() => setTab("myCourses")}>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setEditingCourse(c)}>
                       Edit
                     </button>
                   )}
                   {role === "Admin" && (
                     <>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setTab("myCourses")}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => setEditingCourse(c)}>
                         Edit
                       </button>
                       <button className="btn btn-danger btn-sm" onClick={() => deleteCourse(c.id)} disabled={deletingId === c.id}>
@@ -210,6 +220,19 @@ export default function CoursesPage({ role, toast, setTab }) {
         <AddCourseModal
           onClose={() => setShowAdd(false)}
           onAdded={(c) => { setCourses((prev) => [c, ...prev]); load(); }}
+          toast={toast}
+          setTab={setTab}
+        />
+      )}
+
+      {editingCourse && (
+        <EditCourseModal
+          course={editingCourse}
+          onClose={() => setEditingCourse(null)}
+          onUpdated={(updated) => {
+            setCourses((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+            setEditingCourse(null);
+          }}
           toast={toast}
         />
       )}

@@ -16,7 +16,8 @@ export default function ProgressPage({ toast }) {
       if (list.length > 0) {
         try {
           const catalogData = await apiFetch(`${API}/CourseCatalog/GetAllCourses?pageSize=100`);
-          const items = Array.isArray(catalogData?.items) ? catalogData.items : [];
+          const items = Array.isArray(catalogData?.items) ? catalogData.items
+            : Array.isArray(catalogData?.Items) ? catalogData.Items : [];
           const map = {};
           items.forEach((c) => { map[c.id] = c.title; });
           setCourses(map);
