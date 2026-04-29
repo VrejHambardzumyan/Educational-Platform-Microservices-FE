@@ -27,6 +27,9 @@ export default function Navbar({ user, tab, setTab, logout }) {
               Users
             </button>
           )}
+          <button className={`nav-tab ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
+            Settings
+          </button>
         </div>
         <div className="nav-right">
           <span style={{

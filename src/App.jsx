@@ -9,6 +9,7 @@ import EnrollmentsPage from "./features/enrollment/EnrollmentsPage";
 import MyCoursesPage from "./features/courses/MyCoursesPage";
 import ProgressPage from "./features/progress/ProgressPage";
 import UsersPage from "./features/users/UsersPage";
+import SettingsPage from "./features/settings/SettingsPage";
 import styles from "./shared/styles";
 
 export default function App() {
@@ -76,6 +77,9 @@ export default function App() {
           )}
           {tab === "users" && user.role === "Admin" && (
             <UsersPage toast={toast} />
+          )}
+          {tab === "settings" && (
+            <SettingsPage toast={toast} />
           )}
         </main>
       </div>

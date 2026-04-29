@@ -12,7 +12,7 @@ export default function CardPaymentModal({ userId, role, onClose, onDone, toast 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   async function pollEnrollments(attempts = 0) {
-    if (attempts >= 10) {
+    if (attempts >= 20) {
       setProcessing(false);
       toast("Payment status unclear. Check My Enrollments.", "info");
       onDone();
